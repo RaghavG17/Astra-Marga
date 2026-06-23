@@ -1,0 +1,38 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# API keys and secrets
+.env
+*.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS junk
+.DS_Store
+
+# Output files (resumes generated)
+outputs/
+
+# Your personal profile (optional - keep private)
+data/master_profile.json
+
+# Google Sheets credentials
+credentials.json
+token.json
+service_account.json
+*.json.key
+
+# VSCode settings
+.vscode/
+
+# Pytest cache
+.pytest_cache/
+
+# Logs
+*.log
