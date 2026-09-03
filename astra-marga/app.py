@@ -1,4 +1,5 @@
 import streamlit as st
+from modules.job_parser import parse_job
 from modules.visa_detector import analyze_visa_language
 
 st.set_page_config(
@@ -53,3 +54,18 @@ if st.button("Analyze Job"):
                 st.warning(signal)
         else:
             st.info("No unclear authorization language detected.")
+
+        st.divider()
+        st.subheader("Job Details")
+        parsed = parse_job(job_text)
+
+        col3, col4 = st.columns(2)
+        with col3:
+            st.write("**Title:**", parsed["title"])
+            st.write("**Company:**", parsed["company"])
+            st.write("**Location:**", parsed["location"])
+            st.write("**Level:**", parsed["experience_level"])
+        with col4:
+            st.write("**Skills Found:**")
+            for skill in parsed["required_skills"]:
+                st.badge(skill)
