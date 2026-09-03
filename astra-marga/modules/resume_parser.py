@@ -85,13 +85,14 @@ def extract_bullets_from_section(section_text: str) -> list:
     bullets = []
     for line in lines:
         line = line.strip()
-        # Only grab lines that look like real resume bullets
-        if len(line) > 40 and (
+        # Only grab lines that look like real resume bullets.
+        if line and (
             line.startswith(("●", "•", "-", "▪", "*")) or
             re.match(r"^(Developed|Implemented|Designed|Built|Led|Created|Managed|Conducted|Architected|Collaborated|Utilized|Identified)", line)
         ):
             clean = line.lstrip("●•-▪* ").strip()
-            bullets.append(clean)
+            if len(clean) > 20:
+                bullets.append(clean)
     return bullets
 
 

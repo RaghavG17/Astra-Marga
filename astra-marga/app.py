@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from modules.job_parser import parse_job
+from modules.job_scorer import score_job
 from modules.resume_parser import parse_resume, save_profile
 from modules.visa_detector import analyze_visa_language
 
@@ -59,13 +60,13 @@ if page == "Upload Resume":
         st.subheader("Skills Extracted")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.write("**Strong**")
+            st.markdown("**Strong**")
             st.write(", ".join(sorted(all_strong)) or "None")
         with col2:
-            st.write("**Medium**")
+            st.markdown("**Medium**")
             st.write(", ".join(sorted(all_medium)) or "None")
         with col3:
-            st.write("**Beginner**")
+            st.markdown("**Beginner**")
             st.write(", ".join(sorted(all_beginner)) or "None")
 
         st.subheader("Projects Found")
@@ -144,16 +145,51 @@ elif page == "Analyze Job":
                 st.info("No unclear authorization language detected.")
 
             st.divider()
-            st.subheader("Job Details")
-            parsed = parse_job(job_text)
+
+            scoring = score_job(job_text, result)
+            decision = scoring["decision"]
+            if decision == "Apply":
+                st.success(f"🟢 Decision: {decision}")
+            elif decision == "Maybe":
+                st.warning(f"🟡 Decision: {decision}")
+            else:
+                st.error(f"🔴 Decision: {decision}")
 
             col3, col4 = st.columns(2)
             with col3:
+                st.metric("Match Score", f"{scoring['match_score']}/100")
+            with col4:
+                st.metric("Overall Score", f"{scoring['visa_adjusted_score']}/100")
+
+            st.subheader("Reasoning")
+            for reason in scoring["reasoning"]:
+                st.write(reason)
+
+            col5, col6 = st.columns(2)
+            with col5:
+                st.subheader("✅ Matched Skills")
+                if scoring["matched_skills"]:
+                    st.write(", ".join(scoring["matched_skills"]))
+                else:
+                    st.write("None matched")
+            with col6:
+                st.subheader("⚠️ Missing Skills")
+                if scoring["missing_skills"]:
+                    st.write(", ".join(scoring["missing_skills"]))
+                else:
+                    st.write("No gaps found")
+
+            st.divider()
+            st.subheader("Job Details")
+            parsed = parse_job(job_text)
+
+            col7, col8 = st.columns(2)
+            with col7:
                 st.write("**Title:**", parsed["title"])
                 st.write("**Company:**", parsed["company"])
                 st.write("**Location:**", parsed["location"])
                 st.write("**Level:**", parsed["experience_level"])
-            with col4:
+            with col8:
                 st.write("**Skills Found:**")
                 for skill in parsed["required_skills"]:
                     st.badge(skill)
