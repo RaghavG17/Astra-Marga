@@ -1,0 +1,41 @@
+{
+  "name": "Your Name",
+  "school": "Your University",
+  "degree": "Computer Engineering",
+  "graduation": "Fall 2026",
+  "work_authorization": {
+    "status": "F-1",
+    "seeking_opt_friendly_roles": true,
+    "future_sponsorship_needed": true
+  },
+  "target_roles": [
+    "Software Engineer New Grad",
+    "Embedded Software Engineer"
+  ],
+  "skills": {
+    "strong": ["python", "c++"],
+    "medium": ["react", "sql"],
+    "beginner": ["aws", "docker"]
+  },
+  "projects": [
+    {
+      "name": "Your Project Name",
+      "description": "Brief description",
+      "skills": ["python", "react"],
+      "bullets": [
+        "Built X using Y that achieved Z result",
+        "Implemented A which improved B by C%"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "role": "Software Engineer Intern",
+      "company": "Company Name",
+      "bullets": [
+        "Developed X feature using Y technology",
+        "Improved performance by Z%"
+      ]
+    }
+  ]
+}

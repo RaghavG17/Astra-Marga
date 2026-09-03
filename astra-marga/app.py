@@ -1,12 +1,23 @@
+import json
 import os
 import tempfile
 from pathlib import Path
 
+import requests
 import streamlit as st
+
+
+def check_ollama_status() -> bool:
+    try:
+        response = requests.get("http://localhost:11434", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
 
 from modules.job_parser import parse_job
 from modules.job_scorer import score_job
 from modules.resume_parser import parse_resume, save_profile
+from modules.resume_tailor import tailor_resume
 from modules.visa_detector import analyze_visa_language
 
 st.set_page_config(
@@ -17,6 +28,26 @@ st.set_page_config(
 
 st.sidebar.title("Astra Marga")
 page = st.sidebar.radio("Navigate", ["Upload Resume", "Analyze Job"])
+
+st.sidebar.divider()
+st.sidebar.subheader("⚙️ Settings")
+
+ollama_running = check_ollama_status()
+
+if ollama_running:
+    st.sidebar.success("🟢 Ollama: Online")
+else:
+    st.sidebar.error("🔴 Ollama: Offline")
+
+use_ai = st.sidebar.toggle(
+    "Use AI Tailoring",
+    value=ollama_running,
+    disabled=not ollama_running,
+    help="Requires Ollama running locally. Turn off to save battery.",
+)
+
+if not ollama_running:
+    st.sidebar.caption("Run `ollama serve` in terminal to enable AI features.")
 
 if page == "Upload Resume":
     st.title("Build Your Profile")
@@ -178,6 +209,57 @@ elif page == "Analyze Job":
                     st.write(", ".join(scoring["missing_skills"]))
                 else:
                     st.write("No gaps found")
+
+            st.divider()
+            st.subheader("📄 Tailored Resume Bullets")
+            if decision != "Skip":
+                if use_ai:
+                    with st.spinner("Generating tailored bullets using local AI..."):
+                        tailoring = tailor_resume(
+                            job_text,
+                            scoring["matched_skills"],
+                            scoring["missing_skills"],
+                        )
+
+                    st.write("**Rewritten bullets for this job:**")
+                    for bullet in tailoring["tailored_bullets"]:
+                        st.write(f"• {bullet}")
+
+                    st.subheader("🔍 Truth Check")
+                    for check in tailoring["truth_check"]:
+                        st.write(check)
+
+                    if tailoring["omitted_skills"]:
+                        st.subheader("⚠️ Skills to Mention in Interview")
+                        st.write("In JD but not in your profile — be honest:")
+                        st.write(", ".join(tailoring["omitted_skills"]))
+                else:
+                    st.info("AI tailoring is off. Showing your most relevant original bullets.")
+                    profile_path = "data/master_profile.json"
+                    if Path(profile_path).exists():
+                        with open(profile_path, "r", encoding="utf-8") as file:
+                            profile = json.load(file)
+
+                        all_bullets = []
+                        for exp in profile.get("experience", []):
+                            for bullet in exp.get("bullets", []):
+                                all_bullets.append(bullet)
+                        for proj in profile.get("projects", []):
+                            for bullet in proj.get("bullets", []):
+                                all_bullets.append(bullet)
+
+                        job_words = set(job_text.lower().split())
+                        ranked = sorted(
+                            all_bullets,
+                            key=lambda bullet: len(set(bullet.lower().split()) & job_words),
+                            reverse=True,
+                        )
+                        for bullet in ranked[:5]:
+                            st.write(f"• {bullet}")
+                    else:
+                        st.warning("No saved profile found yet. Save a resume first.")
+            else:
+                st.info("Skipping resume tailoring — job flagged as Skip.")
 
             st.divider()
             st.subheader("Job Details")
