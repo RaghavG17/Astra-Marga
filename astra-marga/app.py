@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 import requests
+import gspread
 import streamlit as st
 
 
@@ -18,6 +19,7 @@ from modules.job_parser import parse_job
 from modules.job_scorer import score_job
 from modules.resume_parser import parse_resume, save_profile
 from modules.resume_tailor import tailor_resume
+from modules.sheets_tracker import SheetsTracker, get_analytics, log_to_sheets
 from modules.visa_detector import analyze_visa_language
 
 st.set_page_config(
@@ -27,7 +29,7 @@ st.set_page_config(
 )
 
 st.sidebar.title("Astra Marga")
-page = st.sidebar.radio("Navigate", ["Upload Resume", "Analyze Job"])
+page = st.sidebar.radio("Navigate", ["Upload Resume", "Analyze Job", "📊 Analytics"])
 
 st.sidebar.divider()
 st.sidebar.subheader("⚙️ Settings")
@@ -275,3 +277,64 @@ elif page == "Analyze Job":
                 st.write("**Skills Found:**")
                 for skill in parsed["required_skills"]:
                     st.badge(skill)
+
+            st.divider()
+            st.subheader("📋 Add to Tracker")
+            col_url, col_source = st.columns(2)
+            with col_url:
+                job_url = st.text_input(
+                    "Job URL (optional)",
+                    placeholder="https://linkedin.com/jobs/...",
+                )
+            with col_source:
+                source = st.selectbox(
+                    "Where did you find this?",
+                    ["LinkedIn", "Handshake", "Glassdoor", "Indeed",
+                     "Company Site", "Referral", "Other"],
+                )
+            notes = st.text_input(
+                "Notes (optional)",
+                placeholder="Referral, recruiter contact, or follow-up notes",
+            )
+            if st.button("➕ Add to Tracker"):
+                try:
+                    log_to_sheets(parsed, result, scoring, job_url, source, notes)
+                except (ValueError, FileNotFoundError, gspread.exceptions.APIError) as error:
+                    st.error(f"Could not add job to tracker: {error}")
+                else:
+                    st.success("✅ Added to Google Sheets tracker!")
+
+elif page == "📊 Analytics":
+    st.title("📊 Application Analytics")
+    st.caption("Insights from your job search")
+    try:
+        analytics = get_analytics()
+    except (ValueError, FileNotFoundError, gspread.exceptions.APIError) as error:
+        st.error(f"Could not load Google Sheets analytics: {error}")
+    else:
+        if not analytics:
+            st.info("No applications tracked yet. Analyze a job and add it to the tracker first.")
+        else:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Analyzed", analytics["total"])
+            col2.metric("Apply", analytics["apply_count"])
+            col3.metric("Maybe", analytics["maybe_count"])
+            col4.metric("Skipped", analytics["skip_count"])
+
+            st.divider()
+            col5, col6 = st.columns(2)
+            with col5:
+                st.subheader("Visa Risk Breakdown")
+                for risk, count in analytics["visa_risks"].items():
+                    st.write(f"**{risk}:** {count} jobs")
+            with col6:
+                st.subheader("Top Missing Skills")
+                for skill, count in analytics["top_missing_skills"]:
+                    st.write(f"**{skill}:** missing in {count} jobs")
+
+            st.divider()
+            st.subheader("All Applications")
+            records = SheetsTracker().get_all_applications()
+            if records:
+                import pandas as pd
+                st.dataframe(pd.DataFrame(records), use_container_width=True)
