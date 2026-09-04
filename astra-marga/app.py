@@ -17,6 +17,7 @@ def check_ollama_status() -> bool:
 
 from modules.job_parser import parse_job
 from modules.job_scorer import score_job
+from modules.outreach_drafter import draft_outreach
 from modules.resume_parser import parse_resume, save_profile
 from modules.resume_tailor import tailor_resume
 from modules.sheets_tracker import SheetsTracker, get_analytics, log_to_sheets
@@ -262,6 +263,64 @@ elif page == "Analyze Job":
                         st.warning("No saved profile found yet. Save a resume first.")
             else:
                 st.info("Skipping resume tailoring — job flagged as Skip.")
+
+            st.divider()
+            st.subheader("✉️ Outreach Messages")
+            st.caption("Review and send manually — nothing is auto-sent.")
+            if decision != "Skip":
+                if st.button("Generate Outreach Messages"):
+                    company = parsed["company"]
+                    role = parsed["title"]
+                    with st.spinner("Drafting messages..."):
+                        outreach = draft_outreach(
+                            company=company,
+                            role=role,
+                            matched_skills=scoring["matched_skills"],
+                            job_text=job_text,
+                            use_ai=use_ai,
+                        )
+
+                    tab1, tab2, tab3, tab4 = st.tabs(
+                        ["👤 Recruiter", "🎓 Alumni", "💼 Hiring Manager", "🔄 Follow Up"]
+                    )
+                    with tab1:
+                        st.text_area(
+                            "Recruiter Message",
+                            outreach["recruiter_message"],
+                            height=180,
+                        )
+                        st.caption(
+                            "Find recruiters by searching: "
+                            + outreach["search_suggestions"][0]
+                        )
+                    with tab2:
+                        st.text_area("Alumni Message", outreach["alumni_message"], height=180)
+                        st.caption(
+                            "Find alumni by searching: "
+                            + outreach["search_suggestions"][2]
+                        )
+                    with tab3:
+                        st.text_area(
+                            "Hiring Manager Message",
+                            outreach["hiring_manager_message"],
+                            height=180,
+                        )
+                        st.caption(
+                            "Find hiring managers by searching: "
+                            + outreach["search_suggestions"][3]
+                        )
+                    with tab4:
+                        st.text_area(
+                            "Follow Up Message",
+                            outreach["follow_up_message"],
+                            height=150,
+                        )
+                        st.caption("Send this 1 week after applying if no response.")
+
+                    st.subheader("🔍 LinkedIn Search Suggestions")
+                    st.caption("Use these searches to find the right people to message.")
+                    for suggestion in outreach["search_suggestions"]:
+                        st.code(suggestion)
 
             st.divider()
             st.subheader("Job Details")
